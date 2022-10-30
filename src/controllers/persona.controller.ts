@@ -1,30 +1,29 @@
+import {service} from '@loopback/core';
 import {
   Count,
   CountSchema,
   Filter,
   FilterExcludingWhere,
   repository,
-  Where,
+  Where
 } from '@loopback/repository';
 import {
-  post,
-  param,
-  get,
-  getModelSchemaRef,
-  patch,
-  put,
-  del,
-  requestBody,
-  response,
+  del, get,
+  getModelSchemaRef, param, patch, post, put, requestBody,
+  response
 } from '@loopback/rest';
 import {Persona} from '../models';
 import {PersonaRepository} from '../repositories';
+import {AutenticacionService} from '../services';
+const fetch = require('node-fetch');
 
 export class PersonaController {
   constructor(
     @repository(PersonaRepository)
-    public personaRepository : PersonaRepository,
-  ) {}
+    public personaRepository: PersonaRepository,
+    @service(AutenticacionService)
+    public servicioAutenticacion: AutenticacionService
+  ) { }
 
   @post('/personas')
   @response(200, {
@@ -44,7 +43,21 @@ export class PersonaController {
     })
     persona: Omit<Persona, 'id'>,
   ): Promise<Persona> {
-    return this.personaRepository.create(persona);
+    const clave = this.servicioAutenticacion.generarClave();
+    const claveCifrada = this.servicioAutenticacion.cifrarClave(clave);
+    persona.clave = claveCifrada;
+    const p = await this.personaRepository.create(persona);
+
+    const destino = persona.correo;
+    const asunto = 'Registrado en Backend Loopback.';
+    const contenido = `Hola ${persona.nombre} , su usuario es: ${persona.correo}, clave: ${clave}`;
+
+    fetch(`http://127.0.0.1:5000/correo?correo_destino=${destino}&asunto=${asunto}&contenido=${contenido}`)
+      .then((data: unknown) => {
+        console.log(data);
+      })
+
+    return p;
   }
 
   @get('/personas/count')
