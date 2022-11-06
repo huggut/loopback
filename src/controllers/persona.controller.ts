@@ -9,10 +9,11 @@ import {
 } from '@loopback/repository';
 import {
   del, get,
-  getModelSchemaRef, param, patch, post, put, requestBody,
+  getModelSchemaRef, HttpErrors, param, patch, post, put, requestBody,
   response
 } from '@loopback/rest';
-import {Persona} from '../models';
+import {LLaves} from '../config/llaves';
+import {Credenciales, Persona} from '../models';
 import {PersonaRepository} from '../repositories';
 import {AutenticacionService} from '../services';
 const fetch = require('node-fetch');
@@ -24,6 +25,34 @@ export class PersonaController {
     @service(AutenticacionService)
     public servicioAutenticacion: AutenticacionService
   ) { }
+
+
+  // Validar usuario
+  @post('/identificarPersona', {
+    responses: {
+      '200': {
+        descripcion: 'Identicicación de usuario'
+      }
+    }
+  })
+  async identificarPersona(
+    @requestBody() credenciales: Credenciales
+  ) {
+    const p = await this.servicioAutenticacion.identificarPersona(credenciales.usuario, credenciales.clave);
+    if (p) {
+      const token = this.servicioAutenticacion.generarTokenJWT(p);
+      return {
+        datos: {
+          nombre: p.nombre,
+          correo: p.correo,
+          id: p.id
+        },
+        tk: token
+      }
+    } else {
+      throw new HttpErrors[401]("Usuario inválido");
+    }
+  }
 
   @post('/personas')
   @response(200, {
@@ -52,7 +81,7 @@ export class PersonaController {
     const asunto = 'Registrado en Backend Loopback.';
     const contenido = `Hola ${persona.nombre} , su usuario es: ${persona.correo}, clave: ${clave}`;
 
-    fetch(`http://127.0.0.1:5000/correo?correo_destino=${destino}&asunto=${asunto}&contenido=${contenido}`)
+    fetch(`${LLaves.urlServicioNotificaciones}/correo?correo_destino=${destino}&asunto=${asunto}&contenido=${contenido}`)
       .then((data: unknown) => {
         console.log(data);
       })

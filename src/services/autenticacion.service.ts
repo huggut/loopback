@@ -27,7 +27,14 @@ export class AutenticacionService {
   //Autenticacion
   identificarPersona(usuario: string, clave: string) {
     try {
-      const p = this.personaRepository.findOne({where: {correo: usuario, clave: clave}});
+      const p = this.personaRepository.findOne(
+        {
+          where: {
+            correo: usuario,
+            clave: clave
+          }
+        }
+      );
       if (p) {
         return p;
       }
@@ -43,8 +50,18 @@ export class AutenticacionService {
         id: persona.id,
         correo: persona.correo,
         nombre: persona.nombre + " " + persona.apellidos
+        //rol: persona.rol
       }
     }, LLaves.claveJWT);
     return token;
+  }
+
+  validarTokenJWT(token: string) {
+    try {
+      const datos = jwt.verify(token, LLaves.claveJWT);
+      return datos;
+    } catch {
+      return false;
+    }
   }
 }
